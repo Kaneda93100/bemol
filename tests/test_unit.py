@@ -18,6 +18,7 @@ def test_airfoil():
     assert airfoil._cl.size > 1
 
 
+
 def test_rotor():
     """Test definition of the rotor class."""
 
@@ -36,7 +37,7 @@ def test_rotor():
 
 
 
-def test_secondary_module():
+def test_secondary_module_default():
     """Test definition of secondary effects."""
     dummy_rotor = bemol.rotor.mexico
 
@@ -49,49 +50,74 @@ def test_secondary_module():
         assert hasattr(model.corrections,'yawModel')
         assert hasattr(model.corrections,'turbulentWakeState')
 
-    # check if the Dummy is selected everytime
-    model = bemol.bem.BaseBEM(dummy_rotor)
-    assert model.corrections.hubTipLoss.__class__ is bemol.secondary.HubTipLoss.Dummy
-    assert model.corrections.skewAngle.__class__ is bemol.secondary.SkewAngle.Dummy
-    assert model.corrections.dynamicInflow.__class__ is bemol.secondary.DynamicInflow.Dummy
-    assert model.corrections.yawModel.__class__ is bemol.secondary.YawModel.Dummy
-    assert model.corrections.turbulentWakeState.__class__ is bemol.secondary.TurbulentWakeState.Dummy
 
-    # define a model with a few custom corrections
+
+def test_secondary_module_dummy():
+    """Test if the Dummy is selected everytime"""
+    dummy_rotor = bemol.rotor.mexico
+
+    model = bemol.bem.BaseBEM(dummy_rotor)
+    assert model.corrections.hubTipLoss.__class__ is bemol.secondary.hubTipLoss.Dummy
+    assert model.corrections.skewAngle.__class__ is bemol.secondary.skewAngle.Dummy
+    assert model.corrections.dynamicInflow.__class__ is bemol.secondary.dynamicInflow.Dummy
+    assert model.corrections.yawModel.__class__ is bemol.secondary.yawModel.Dummy
+    assert model.corrections.turbulentWakeState.__class__ is bemol.secondary.turbulentWakeState.Dummy
+
+
+
+def test_secondary_module_custom_list():
+    """Test define a model with a few custom corrections."""
+    dummy_rotor = bemol.rotor.mexico
+
     model = bemol.bem.BaseBEM(
         dummy_rotor,
-        corrections=[bemol.secondary.HubTipLoss.Prandtl,bemol.secondary.SkewAngle.Burton]
+        corrections=[bemol.secondary.hubTipLoss.Prandtl,bemol.secondary.skewAngle.Burton]
         )
-    assert model.corrections.hubTipLoss.__class__ is bemol.secondary.HubTipLoss.Prandtl
-    assert model.corrections.skewAngle.__class__ is bemol.secondary.SkewAngle.Burton
-    assert model.corrections.dynamicInflow.__class__ is bemol.secondary.DynamicInflow.Dummy
-    assert model.corrections.yawModel.__class__ is bemol.secondary.YawModel.Dummy
-    assert model.corrections.turbulentWakeState.__class__ is bemol.secondary.TurbulentWakeState.Dummy
+    assert model.corrections.hubTipLoss.__class__ is bemol.secondary.hubTipLoss.Prandtl
+    assert model.corrections.skewAngle.__class__ is bemol.secondary.skewAngle.Burton
+    assert model.corrections.dynamicInflow.__class__ is bemol.secondary.dynamicInflow.Dummy
+    assert model.corrections.yawModel.__class__ is bemol.secondary.yawModel.Dummy
+    assert model.corrections.turbulentWakeState.__class__ is bemol.secondary.turbulentWakeState.Dummy
 
-    # same as before, but with dict input define a model with a few custom corrections
+
+
+def test_secondary_module_custom_dict():
+    """Same as before, but with dict input define a model with a few custom corrections"""
+    dummy_rotor = bemol.rotor.mexico
+
     model = bemol.bem.BaseBEM(
         dummy_rotor,
         corrections=dict(
-            hubTipLoss=bemol.secondary.HubTipLoss.Prandtl,
-            skewAngle=bemol.secondary.SkewAngle.Burton
+            hubTipLoss=bemol.secondary.hubTipLoss.Prandtl,
+            skewAngle=bemol.secondary.skewAngle.Burton
             )
         )
-    assert model.corrections.hubTipLoss.__class__ is bemol.secondary.HubTipLoss.Prandtl
-    assert model.corrections.skewAngle.__class__ is bemol.secondary.SkewAngle.Burton
-    assert model.corrections.dynamicInflow.__class__ is bemol.secondary.DynamicInflow.Dummy
-    assert model.corrections.yawModel.__class__ is bemol.secondary.YawModel.Dummy
-    assert model.corrections.turbulentWakeState.__class__ is bemol.secondary.TurbulentWakeState.Dummy
+    assert model.corrections.hubTipLoss.__class__ is bemol.secondary.hubTipLoss.Prandtl
+    assert model.corrections.skewAngle.__class__ is bemol.secondary.skewAngle.Burton
+    assert model.corrections.dynamicInflow.__class__ is bemol.secondary.dynamicInflow.Dummy
+    assert model.corrections.yawModel.__class__ is bemol.secondary.yawModel.Dummy
+    assert model.corrections.turbulentWakeState.__class__ is bemol.secondary.turbulentWakeState.Dummy
 
-    # mix class and instance
-    hub_corr = bemol.secondary.HubTipLoss.Prandtl()
+
+
+def test_secondary_module_custom_mixed():
+    """Test mix class and instance for correction input."""
+    dummy_rotor = bemol.rotor.mexico
+
+    hub_corr = bemol.secondary.hubTipLoss.Prandtl()
     model = bemol.bem.BaseBEM(
-        dummy_rotor,corrections=[hub_corr,bemol.secondary.SkewAngle.Burton]
+        dummy_rotor,corrections=[hub_corr,bemol.secondary.skewAngle.Burton]
         )
     assert model.corrections.hubTipLoss is hub_corr
-    assert model.corrections.skewAngle.__class__ is bemol.secondary.SkewAngle.Burton
+    assert model.corrections.skewAngle.__class__ is bemol.secondary.skewAngle.Burton
 
-    # check if corrections of nested solvers are the same instance
+
+def test_secondary_module_nested_solvers():
+    """Check if corrections of nested solvers are the same instance."""
     ## TOOD: maybe this is not always the wanted behavior!
+    dummy_rotor = bemol.rotor.mexico
+    corrections = {}
+
     solver_uncoupled = bemol.ning.NingUncoupled(dummy_rotor,1.0,corrections)
     solver_coupled = bemol.ning.NingCoupled(dummy_rotor,1.0,corrections)
     assert solver_coupled.corrections.dynamicInflow is not solver_uncoupled.corrections.dynamicInflow

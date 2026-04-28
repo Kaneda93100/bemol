@@ -39,11 +39,11 @@ iElement = 28
 mexico = bemol.rotor.mexico
 
 corrections = [
-    bemol.secondary.HubTipLoss.Prandtl,
-    bemol.secondary.SkewAngle.Burton,
-    bemol.secondary.YawModel.Dummy,
-    bemol.secondary.DynamicInflow.Knudsen,
-    bemol.secondary.TurbulentWakeState.Buhl,
+    bemol.secondary.hubTipLoss.Prandtl,
+    bemol.secondary.skewAngle.Burton,
+    bemol.secondary.yawModel.Dummy,
+    bemol.secondary.dynamicInflow.Knudsen,
+    bemol.secondary.turbulentWakeState.Buhl,
 ]
 
 times = np.arange(0.0,50.0,tStep)

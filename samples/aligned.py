@@ -26,11 +26,11 @@ pitch = turbine.pitchRated
 rho = 1.191
 
 corrections = (
-    bemol.secondary.HubTipLoss.Prandtl,
-    bemol.secondary.SkewAngle.Burton,
-    bemol.secondary.YawModel.PittAndPeters,
-    bemol.secondary.DynamicInflow.Dummy,
-    bemol.secondary.TurbulentWakeState.Buhl,
+    bemol.secondary.hubTipLoss.Prandtl,
+    bemol.secondary.skewAngle.Burton,
+    bemol.secondary.yawModel.PittAndPeters,
+    bemol.secondary.dynamicInflow.Dummy,
+    bemol.secondary.turbulentWakeState.Buhl,
     )
 
 # all angles are null, flow completly aligned

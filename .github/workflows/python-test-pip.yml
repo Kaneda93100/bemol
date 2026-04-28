@@ -1,6 +1,12 @@
-name: Python Package using Conda
+name: Python Package using pip
 
-on: [push]
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+
 
 jobs:
   test-linux:
@@ -16,15 +22,11 @@ jobs:
       with:
         python-version: '3.11.2'
     
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
-    
     - name: Install dependencies
       run: |
-        conda env update --file environment.yaml
-        conda install flake8
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8
     
     - name: Lint with flake8
       run: |
@@ -33,15 +35,27 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     
-    # TODO: conside the latest release, not a hardcoded one!
+    # considers the latest release, not a hardcoded one!
     - name: Get reference results
       run: |
-        curl -L -o pytest-results.zip "https://github.com/ifpen/bemol/releases/download/v0.0.1/pytest-results.zip"
+        URL=$(curl -s https://api.github.com/repos/ifpen/bemol/releases/latest \
+            | jq -r '.assets[] | select(.name=="pytest-results.zip") | .browser_download_url')
+        if [ -z "$URL" ] || [ "$URL" = "null" ]; then
+          echo "pytest-results.zip not found in latest release assets"
+          exit 1
+        fi
+        curl -L -o pytest-results.zip "$URL"
         unzip pytest-results.zip
         mv tests/results tests/ref/
 
     - name: Test with pytest
       run: |
-        source activate bemol
         pytest tests/ -vvs --reference tests/ref/
-    
+        zip -r pytest-results.zip tests/results
+
+    - name: Upload pytest-results artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-results
+        path: pytest-results.zip
+        retention-days: 0.020833 # 30 minutes
