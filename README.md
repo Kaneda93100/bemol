@@ -81,14 +81,25 @@ The library is based on [Numpy](https://numpy.org/), [Scipy](https://scipy.org/)
 [pytest](https://pytest.org/) is as well optional, used for the evaluation
 of the tests inside the `tests` sub-folder.
 
-The list of considered/tested versions are available in environment.yaml.
-For use with conda:
+The list of considered/tested versions are available in conda and pip formats.
 
-```bash
-conda env create -f environment.yaml
-```
+- For use with conda:
 
-Use `conda activate bemol` to use the env.
+  ```bash
+  conda env create -f environment.yaml
+  ```
+
+  Use `conda activate bemol` to use the env.
+
+- Using pip and venv:
+
+  ```bash
+  python3 -m venv .bemol
+  source .bemol/bin/activate
+  pip install -r requirements.txt
+  ```
+
+  Use `source .bemol/bin/activate` to use the env.
 
 ## Authors
 
