@@ -45,12 +45,12 @@ jobs:
           exit 1
         fi
         curl -L -o pytest-results.zip "$URL"
+        zip -r pytest-results.zip tests/results
         mv tests/results tests/ref/
 
     - name: Test with pytest
       run: |
         pytest tests/ -vvs --reference tests/ref/
-        zip -r pytest-results.zip tests/results
 
     - name: Upload pytest-results artifact
       uses: actions/upload-artifact@v4
