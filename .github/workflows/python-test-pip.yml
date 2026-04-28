@@ -58,4 +58,4 @@ jobs:
       with:
         name: pytest-results
         path: pytest-results.zip
-        retention-minutes: 30
+        retention-days: 0.020833 # 30 minutes
