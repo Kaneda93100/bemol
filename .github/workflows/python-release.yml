@@ -10,9 +10,9 @@ on:
 jobs:
   release:
     # Only run if the triggering run was for a tag starting with v
-    # if: >
-    #   github.event.workflow_run.conclusion == 'success' &&
-    #   startsWith(github.event.workflow_run.head_branch, 'v')
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 5
