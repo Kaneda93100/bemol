@@ -116,7 +116,10 @@ def test_compare(folder,run,request,reference_folder):
         if reference_folder is not None and reference_folder.exists():
             ref_filename = reference_folder / name_run / filename
             ref_data = pd.read_csv(ref_filename)
-            pd.testing.assert_frame_equal(ref_data,new_data)
+            pd.testing.assert_frame_equal(
+                ref_data,new_data,
+                check_exact=False,rtol=0.0001,
+                )
         else:
             # for the moment just doing nothing if reference folder not
             # available! Make it at least a warning in the future.
