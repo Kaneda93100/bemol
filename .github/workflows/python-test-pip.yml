@@ -38,6 +38,6 @@ jobs:
 
     - name: Test with pytest
       run: |
-        source activate bemol
+        source .bemol/bin/activate
         pytest tests/ -vvs --reference tests/ref/
     
