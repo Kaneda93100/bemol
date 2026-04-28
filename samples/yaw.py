@@ -40,9 +40,9 @@ yawAngle = skewAngle
 mexico = bemol.rotor.mexico
 
 corrections = (
-    bemol.secondary.HubTipLoss.Prandtl,
-    bemol.secondary.SkewAngle.Burton,
-    bemol.secondary.TurbulentWakeState.Buhl,
+    bemol.secondary.hubTipLoss.Prandtl,
+    bemol.secondary.skewAngle.Burton,
+    bemol.secondary.turbulentWakeState.Buhl,
     )
 
 

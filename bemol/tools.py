@@ -1,7 +1,10 @@
 import numpy as np
 
 
-def calculateVelocity(wind:float,omega:float,rad:float,azi:float,yaw:float,tilt:float,precone:float):
+def calculateVelocity(
+        wind:float,omega:float,rad:float,azi:float,
+        yaw:float,tilt:float,precone:float
+        ):
     """Calculate relative velocity for a given wind configuration
 
     Parameters

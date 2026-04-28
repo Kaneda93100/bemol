@@ -5,58 +5,9 @@ import inspect
 import numpy as np
 
 from . import rotor
-from . import secondary
+from . import correction
 from . import tools
 
-
-
-
-class Corrections(object):
-    """Class for storing corrections.
-
-    Consider all the corrections available in the secondary
-    models module. If not given by the user considers the base (empty)
-    correction with the default parameters.
-
-    Parameters
-    ----------
-    corrections : optional
-        dictionary or list with the secondary corrections, either classes of
-        instances - in case of custom parameters. If dictionary is
-        given, the key must be the name of the correction as defined in
-        secondary.py with a lower first letter.
-    
-    """
-    def __init__(self,corrections:dict={}):
-        for name, obj in inspect.getmembers(secondary):
-            if inspect.isclass(obj):
-                _name = name[0].lower() + name[1:]
-                if type(corrections) is dict:
-                    if _name in corrections:
-                        # instantiation of correction with default values
-                        corr = corrections[_name]
-                        corr = corr() if isinstance(corr,type) else corr
-                        setattr(self,_name,corr)
-                    else:
-                        setattr(self,_name,obj.Dummy())
-                else:
-                    effect_name = obj.__qualname__
-                    setattr(self,_name,obj.Dummy())
-                    # loop for all effects to check if any of the input
-                    # corrections are inner of the available corrections
-                    for corr in corrections:
-                        # instantiation of correction with default values
-                        corr = corr() if isinstance(corr,type) else corr
-                        correction_name = type(corr).__qualname__
-                        if effect_name in correction_name:
-                            setattr(self,_name,corr)
-                            break
-
-
-    def __iter__(self):
-        """Iterate corrections."""
-        for value in self.__dict__.values():
-            yield value
 
 
 class BaseBEM:
@@ -89,7 +40,7 @@ class BaseBEM:
         self.n = len(rotor.sections)
 
         if corrections is None: corrections = {}
-        self.corrections = Corrections(corrections)
+        self.corrections = correction.Corrections(corrections)
         
 
 

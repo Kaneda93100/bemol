@@ -39,9 +39,9 @@ yawAngle = skewAngle
 mexico = bemol.rotor.mexico
 
 base_corrections = [
-    bemol.secondary.HubTipLoss.Prandtl,
-    bemol.secondary.SkewAngle.Burton,
-    bemol.secondary.TurbulentWakeState.Buhl,
+    bemol.secondary.hubTipLoss.Prandtl,
+    bemol.secondary.skewAngle.Burton,
+    bemol.secondary.turbulentWakeState.Buhl,
 ]
 
 
@@ -49,7 +49,7 @@ base_corrections = [
 for yaw_model in ('Dummy','PittAndPeters','IFPEN'):
 
     corrections = base_corrections.copy()
-    corrections.append(getattr(bemol.secondary.YawModel,yaw_model))
+    corrections.append(getattr(bemol.secondary.yawModel,yaw_model))
 
     solver = bemol.ning.NingUncoupled(mexico,rho,corrections)
     forces, _, azimuths = solver.cycle(

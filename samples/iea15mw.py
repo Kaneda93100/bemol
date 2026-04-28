@@ -28,8 +28,8 @@ tilt = turbine.tilt
 rho = 1.225
 
 corrections = (
-    bemol.secondary.HubTipLoss.Prandtl,
-    bemol.secondary.TurbulentWakeState.Buhl,
+    bemol.secondary.hubTipLoss.Prandtl,
+    bemol.secondary.turbulentWakeState.Buhl,
     )
 
 # all angles are null, flow completly aligned
