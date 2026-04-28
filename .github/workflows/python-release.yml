@@ -1,12 +1,17 @@
 name: Create and upload release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Python Package using pip"]
+    types:
+      - completed
 
 jobs:
-  test-linux:
+  release:
+    # Only run if the triggering run was for a tag starting with v
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 5
@@ -14,34 +19,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.11.2
-      uses: actions/setup-python@v3
+    - name: Download pytest-results artifact from previous workflow
+      uses: actions/download-artifact@v4
       with:
-        python-version: '3.11.2'
-    
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
-    
-    - name: Install dependencies
-      run: |
-        conda env update --file environment.yaml
-    
-    - name: Lint with flake8
-      run: |
-        conda install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
-    - name: Test with pytest
-      run: |
-        source activate bemol
-        pytest tests/ -vvs
-        # store the latest run results as release artifact
-        zip -r pytest-results.zip tests/results/
+        name: pytest-results
+        run-id: ${{ github.event.workflow_run.id }}
+        path: .
     
     - name: Create Release
       id: create_release
