@@ -22,7 +22,9 @@ class Dummy:
 class Buhl:
     """Buhl's empirical high-induction correction model.
     
-    https://docs.nlr.gov/docs/fy05osti/36834.pdf
+    Buhl, Jr, M L. "New Empirical Relationship between Thrust Coefficient and
+    Induction Factor for the Turbulent Windmill State.", Aug. 2005.
+    https://doi.org/10.2172/15016819
     
     """
 

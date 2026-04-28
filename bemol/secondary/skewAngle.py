@@ -11,7 +11,11 @@ class Dummy:
 
 
 class Burton:
-    """Burton skewed wake model."""
+    """Burton skewed wake model.
+    
+    Burton "Handbook of wind energy", 2001, page 105.
+
+    """
 
     def __init__(self,) -> None:
         return

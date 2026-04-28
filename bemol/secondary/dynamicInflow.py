@@ -12,7 +12,13 @@ class Dummy:
 
 
 class Knudsen:
-    """Knudsen dynamic inflow model."""
+    """Knudsen dynamic inflow model.
+    
+    T. Knudsen and T. Bak, "Simple model for describing and estimating wind
+    turbine dynamic inflow," 2013 American Control Conference,
+    Washington, DC, USA, 2013, pp. 640-646, doi: 10.1109/ACC.2013.6579909.
+    
+    """
 
     def __init__(self,alphaDynamic=0.3,tauScale=3.0) -> None:
         self._alpha0 = alphaDynamic

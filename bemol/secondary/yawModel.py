@@ -12,8 +12,8 @@ class Dummy:
 
     def __call__(self,axialInduction,*args,**kwargs):
         return axialInduction
-    
-    
+
+
 class PittAndPeters:
     """Pitt & Peters skewed wake model.
     
@@ -34,7 +34,8 @@ class PittAndPeters:
         return axialInduction*(
             1. + self.factor*np.tan(wakeSkewAngle/2.)*radius/tipRadius*np.sin(azimuthAngle)
             )
-    
+
+
 class IFPEN:
     """IFPEN skewed wake model.
     
