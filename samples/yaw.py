@@ -10,12 +10,14 @@ import os
 
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')  
 import matplotlib.pyplot as plt
 
 ## uncoment following lines if ModuleNotFounError
 ## add repo folder to PYTHONPATH, if running from the samples folder
-# import sys
-# sys.path.append(os.path.abspath(f'{__file__}/../..'))
+import sys
+sys.path.append(os.path.abspath(f'{__file__}/../..'))
 
 import bemol
 
@@ -90,4 +92,4 @@ plt.ylabel('normal lineic force, N/m')
 plt.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),ncol=3)
 plt.grid()
 plt.savefig(f'{results_folder}/graph_yaw_azimuthal.png')
-# plt.show() # uncomment if you want to show the figure
+plt.show() # uncomment if you want to show the figure

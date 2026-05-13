@@ -2,3 +2,9 @@
 **/.pytest_cache/
 
 /.bemol/
+bem_env
+tests
+samples
+results
+images
+.github
