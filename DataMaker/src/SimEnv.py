@@ -1,5 +1,6 @@
 import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), '..')))
 
 import bemol as bem
 import numpy as np
@@ -11,12 +12,12 @@ import matplotlib.pyplot as plt
 ## Définir des variables par défaut pour plus de lisibilité
 rho = 1.191
 rotor_dir_vortex = '/home/arthur/Documents/GitHub/bemol/bemol/rotors/mexico_vortex'
-rotor_vortex = bem.rotor(rotor_dir_vortex)
+rotor_vortex = bem.rotor.Rotor(rotor_dir_vortex)
 corrections = [
-    bem.secondary.HubTipLoss.Prandtl,
-    bem.secondary.SkewAngle.Burton,
-    bem.secondary.TurbulentWakeState.Buhl,
-    bem.secondary.YawModel.IFPEN
+    bem.secondary.hubTipLoss.Prandtl,
+    bem.secondary.skewAngle.Burton,
+    bem.secondary.turbulentWakeState.Buhl,
+    bem.secondary.yawModel.IFPEN
 ]
 solver_yawOn = bem.ning.NingUncoupled(rotor_vortex, rho, corrections)
 
@@ -27,7 +28,7 @@ class SimEnv :
     precone : float
     tilt : float
     rotor_path : str
-    rotor : bem.rotor
+    rotor : bem.rotor.Rotor
     omega : float
 
     ## Paramètres métérologiques (pour l'instant un seul, mais à enrichir)
@@ -35,9 +36,10 @@ class SimEnv :
     rho : float
     yaw : float
     skew : float
+    act_yaw : bool
 
     ## Paramètres de simulations
-    Nbr_rev : float
+    nbr_rev : float
     tsr : float
     tStep : float
 
@@ -47,7 +49,7 @@ class SimEnv :
     
 
     def __init__(self, 
-                 omega, U, yaw, skew,tsr, corrections:list,
+                 omega, U, yaw, skew, corrections:list = corrections,
                  rotor_dir:str = rotor_dir_vortex,
                  rho = 1.191, Nbr_rev = 1.0, tStep = 0,precone = 0, tilt = 0,
                  ) :
@@ -63,11 +65,15 @@ class SimEnv :
         self.U       = U
         self.rho     = rho
         self.yaw     = yaw
-        self.skew    = skew
+        self.skew    = skew 
+        if bem.secondary.yawModel.IFPEN or bem.secondary.yawModel.PittAndPeters in corrections :
+            self.act_yaw = True
+        else :
+            self.act_yaw = False
 
         ## Charger les paramètres de simulations
-        self.Nbr_rev = Nbr_rev
-        self.tsr     = tsr
+        self.nbr_rev = Nbr_rev
+        self.tsr     = self.rotor.sections[-1].radius*self.omega/U
         self.tStep   = tStep
 
         ## Charger le solver
@@ -76,51 +82,55 @@ class SimEnv :
 
     def print(self):
 
-        print("#"*20)
-        print("\t"*3+"Affichage des paramètres de la simulation"+"\t"*3)
-        print("#"*20)
+        print("#"*100)
+        print("Affichage des paramètres de la simulation")
+        print("#"*100)
 
         print("\n\n")
 
-        print("#"*20)
+        print("#"*100)
         print('------- Paramètres mécaniques/géométriques -------\n')
         print(f"----> Precone : {self.precone}\n")
         print(f"----> Tilt : {self.tilt}\n")
         print(f"----> Vitesse de rotation (omega) : {self.omega}\n")
         print(f"----> Rotor (chemin) : {self.rotor_dir}\n")
-        print("#"*20)
+        print(f"----> Pitch : {self.rotor.pitchRated}")
+        print("#"*100)
 
-        print("#"*20)
+        print("#"*100)
         print('------- Paramètres métérologiques -------\n')
         print(f"----> Vitesse du vent (U) : {self.U}\n")
         print(f"----> densité de l'air : {self.rho}\n")
-        print(f"----> yaw : {self.yaw}\n")
-        print(f"----> skew : {self.skew}\n")
-        print("#"*20)
+        print(f"----> yaw : {self.yaw} degré\n")
+        print(f"----> skew : {self.skew} degré\n")
+        print("#"*100)
 
-        print("#"*20)
+        print("#"*100)
         print('------- Paramètres de simulation -------\n')    
         print(f"----> Nombre de révolution : {self.nbr_rev}\n")
         print(f"----> Tsr : {self.tsr}\n")
         print(f"----> tStep : {self.tStep}")
-        print("#"*20)        
+        print("#"*100)        
 
-        print("#"*20)
+        print("#"*100)
         print('------- Paramètres du solver -------\n')
         print(f"----> Géométrie utilisé : {self.rotor_dir}\n")
-        print(f"----> Corrections : {self.corrections}") 
-        print("#"*20)
+        print(f"----> Corrections : {self.corrections}\n")
+        if self.act_yaw == True :
+            print(f"----> Yaw activé, modèle {self.corrections[-1]}\n")
+        else : 
+            print("----> Yaw désactivé\n") 
+        print("#"*100)
 
         return                                                       
     
     def data_maker(self, yaws:list, tsrs:list, nbr_az, export = True) :
-        az = np.linspace(0,360, nbr_az, endpoint = False)
-        rad_azs = np.radians(az)
-        
-        attr = ['r', 'theta', 'yaw', 'V_eff', 'alpha', 'Fn', 'Ft']
+        deg_azs = np.linspace(0,360, nbr_az, endpoint = False)
+        rad_azs = np.radians(deg_azs)
         data_list = []
 
         for yaw in yaws :
+            yaw = np.radians(yaw)
             for i, az in enumerate(rad_azs) :
                 for j in range(len(self.rotor.sections)) :
                     
@@ -128,23 +138,23 @@ class SimEnv :
                     velocities = bem.tools.calculateVelocity(wind = self.U, omega = self.omega, rad = self.rotor.sections[j].radius, azi = rad_azs[i],
                                                     yaw = yaw, tilt = self.tilt,
                                                     precone = self.precone)                
-                    fn,ft,ai,at = self.solver.solve(self.rotor.sections[j], az[i], pitch = self.rotor.pitch,
+                    fn,ft,ai,at = self.solver.solve(self.rotor.sections[j], rad_azs[i], pitch = self.rotor.pitchRated,
                                                 velocity = velocities, angles = [yaw, self.tilt])
 
-            angle = self.rotor.sections[j].twist + self.pitch
-            _, aoa = compute_inflow_aoa(self.solver, velocities[0], velocities[1], angle)
-            V_eff = np.sqrt((self.U*(1-ai))**2 + (self.omega*self.rotor.sections[j].radius*(1+at))**2)                             
+                    angle = self.rotor.sections[j].twist + self.rotor.pitchRated
+                    _, aoa = compute_inflow_aoa(self.solver, velocities[0], velocities[1], angle)
+                    V_eff = np.sqrt((self.U*(1-ai))**2 + (self.omega*self.rotor.sections[j].radius*(1+at))**2)                             
 
-            data_list.append({
-                    'yaw': yaw,
-                    'r': self.rotor.sections[j].radius,
-                    'theta': np.degrees(az[i]).round(1),  
-                    'Fn': fn,
-                    'Ft': ft,                    
-                    'V_eff': V_eff,
-                    'Alpha_deg': np.degrees(aoa)
-                    })
-        df = pd.DataFrame(data_list)
+                    data_list.append({
+                            'yaw': yaw,
+                            'r': self.rotor.sections[j].radius,
+                            'theta': deg_azs[i],  
+                            'Fn': fn,
+                            'Ft': ft,                    
+                            'V_eff': V_eff,
+                            'Alpha_deg': np.degrees(aoa)
+                            })
+            df = pd.DataFrame(data_list)
 
         ## Exporter les données calculées dans le dossier Data/
         if export == True :
@@ -154,31 +164,35 @@ class SimEnv :
 
         return df
 
-def easy_plot(df, attr_x:str, attr_y:str, indexs:list = [4, 17, 30], savefig = False) :
-    print(f"Affichage de {attr_y} en fonction de {attr_x}\n")
+def easy_plot(df, attr_x:str, attr_y:str, yaw_index:int = 10, indexs:list = [4, 17, 30], savefig = False) :
+    print(f"\nAffichage de {attr_y} en fonction de {attr_x}\n")
 
     if attr_y not in ['Fn', 'Ft', 'V_eff', 'Alpha_deg'] :
         raise ValueError(f"L'attribut {attr_y} n'est pas supporté pour l'affichage en ordonnée. Choisissez un dans ['Fn', 'Ft', 'V_eff', 'Alpha_deg'].")
 
-    fig_dir = p.Path(p.Path(os.path.join(os.path.direname(__file__), 'figs')).mkdir(exist_ok = True))
-
+    fig_dir = p.Path(p.Path(os.path.join(os.path.dirname(__file__), 'figs'))).mkdir(exist_ok = True)
+    
+    nbr_r = df['r'].unique().shape[0]
+    nbr_a = df['theta'].unique().shape[0]
+    yaw_iter = nbr_r*nbr_a
+    
     if attr_x == 'r' :
         """
         Dans ce cas, la liste indexs contient les indices des azimuts d'intérêts.
         Plot la distribution de la variable attr_y sur la pale. 
         """
 
-        x = df[attr_x].to_numpy()
-        fig = plt.figure(figsize = (15,12))
+        x = df[attr_x].unique()
+        fig = plt.figure(figsize = (20,12))
         
-        for i in range(indexs) :
-            plt.subplot(len(indexs), 1, i)
+        for i in range(len(indexs)) :
+            plt.subplot(len(indexs), 1, i+1)
 
-            y = df[attr_y][i*x.shape[0]:(i+1*x.shape[0])]
-            plt.plot(x, y)
+            y = df[attr_y][yaw_iter*yaw_index + i*x.shape[0]: yaw_iter*(yaw_index-1) + (i+1)*x.shape[0]].values
+            plt.plot(x, y, lw = 2.5)
             plt.xlabel(attr_x)
             plt.ylabel(attr_y)
-            plt.title(f"Azimut : {indexs}°")
+            plt.title(f"Azimut : {indexs[i]}°")
             plt.grid()
     
     elif attr_x == 'theta' :
@@ -187,22 +201,22 @@ def easy_plot(df, attr_x:str, attr_y:str, indexs:list = [4, 17, 30], savefig = F
         Plot la varibale attr_y en fonction des azimuts (sur [0,360]).
         """
         
-        x = df[attr_x].to_numpy()
+        x = df[attr_x].unique()
         nbr_az = x.shape[0]
-        fig = plt.figure(figsize = (15,12))
+        fig = plt.figure(figsize = (18,12))
 
-        for i in range(indexs) :
-            plt.subplot(len(indexs),1, i)
+        for i in range(len(indexs)) :
+            plt.subplot(len(indexs),1, i+1)
 
             ## Récupérer les données au bon endroit dans le DataFrame
             y = np.zeros((nbr_az))
             for j in range(nbr_az) : 
-                y[j] = df.to_numpy()[indexs[i] + nbr_az*j]
+                y[j] = df[attr_y].values[(yaw_index-1)*yaw_iter + indexs[i] + nbr_az*j]
 
-            plt.plot(x,y)
+            plt.plot(x,y, lw = 2.5)
             plt.xlabel(attr_x)
             plt.ylabel(attr_y)
-            plt.title(f"Section de pale : {df['r'].to_numpy()[indexs[i]]} (d'indice {indexs[i]})")
+            plt.title(f"Section de pale : {df['r'].to_numpy()[indexs[i]].round(2)} (d'indice {indexs[i]})")
             plt.grid()
     else : 
         raise ValueError(f"L'attribut {attr_x} n'est par supporté. Essayer avec un des attributs de ['r', 'theta'].")    
@@ -212,10 +226,8 @@ def easy_plot(df, attr_x:str, attr_y:str, indexs:list = [4, 17, 30], savefig = F
         for i in range(len(indexs)) : 
             fig_name += ('_'+str(indexs[i])+'_')
             fig.savefif(fig_dir/fig_name)
-
+    plt.subplots_adjust(hspace = 0.3)
     return fig
-    
-
 
 def compute_inflow_aoa(solver, Ux, Uy, angle):
         uxRelative = Ux * (1.0 - solver._axial_induction)
