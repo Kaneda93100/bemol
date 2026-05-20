@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pathlib as p
 import matplotlib.pyplot as plt
+import multiprocessing as mp
 
 
 ## Définir des variables par défaut pour plus de lisibilité
@@ -124,16 +125,21 @@ class SimEnv :
 
         return                                                       
     
+    def set_wind(self, tsr) :
+        self.U = self.omega*self.rotor.sections[-1].radius/tsr
+        return
+
     def data_maker(self, yaws:list, tsrs:list, nbr_az, export = True) :
         deg_azs = np.linspace(0,360, nbr_az, endpoint = False)
         rad_azs = np.radians(deg_azs)
         data_list = []
 
-        for yaw in yaws :
-            yaw = np.radians(yaw)
+        for i in range(len(yaws)):
+            yaw = np.radians(yaws[i])
+            tsr = tsrs[i]
+            self.set_wind(tsr)
             for i, az in enumerate(rad_azs) :
                 for j in range(len(self.rotor.sections)) :
-                    
                     ## Calculer les efforts normaux et les inductions
                     velocities = bem.tools.calculateVelocity(wind = self.U, omega = self.omega, rad = self.rotor.sections[j].radius, azi = rad_azs[i],
                                                     yaw = yaw, tilt = self.tilt,
@@ -147,6 +153,7 @@ class SimEnv :
 
                     data_list.append({
                             'yaw': yaw,
+                            'TSR' : tsr,
                             'r': self.rotor.sections[j].radius,
                             'theta': deg_azs[i],  
                             'Fn': fn,
@@ -154,12 +161,44 @@ class SimEnv :
                             'V_eff': V_eff,
                             'Alpha_deg': np.degrees(aoa)
                             })
-            df = pd.DataFrame(data_list)
+        df = pd.DataFrame(data_list)
 
         ## Exporter les données calculées dans le dossier Data/
         if export == True :
-            path_data = p.Path(os.path.join(os.path.direname(__file__), 'Data')).mkdir(exist_ok = True)
-            df.to_csv(path_data/'bem_data.csv', index = False, sep = ',', quotechar = True)
+            path_data = p.Path(os.path.dirname(__file__)) / 'export' / 'Data'
+            path_data.mkdir(parents=True, exist_ok=True)
+            df.to_csv(path_data/'bem_data.csv', index = False, sep = ',')
+            print(f"Données calculées pour yaws == [{yaws}] et tsrs == [{tsrs}].\nEnregistrées à l'adresse {path_data}")
+
+        return df
+    
+    def para_data_maker(self, yaws:list, tsrs:list, nbr_az, export = True):
+        deg_azs = np.linspace(0,360, nbr_az, endpoint = False)
+        rad_azs = np.radians(deg_azs)
+        n_sections = len(self.rotor.sections)
+        data_list = []
+
+        with mp.Pool(processes = mp.cpu_count()) as pool :
+            for i in range (len(yaws)) :
+                yaw = np.radians(yaws[i])
+                tsr = tsrs[i]
+                self.set_wind(tsr)                  
+            
+                args = [
+                    (az, yaw, tsr, self, j)
+                    for az in rad_azs
+                    for j in range(n_sections)
+                ]
+
+                #data = [job(*a) for a in args]
+                data = pool.starmap(job, args)
+                data_list.extend(data)
+        df = pd.DataFrame(data_list)
+
+        if export == True :
+            path_data = p.Path(os.path.dirname(__file__)) / 'export' / 'Data'
+            path_data.mkdir(parents=True, exist_ok=True)
+            df.to_csv(path_data/'bem_data.csv', index = False, sep = ',')
             print(f"Données calculées pour yaws == [{yaws}] et tsrs == [{tsrs}].\nEnregistrées à l'adresse {path_data}")
 
         return df
@@ -239,4 +278,28 @@ def compute_inflow_aoa(solver, Ux, Uy, angle):
         return inflowAngle, attackAngle
 
 
+def job(az, yaw, tsr, env:SimEnv, j) :
+    velocities = bem.tools.calculateVelocity(wind = env.U, omega = env.omega, 
+                                                         rad = env.rotor.sections[j].radius, azi = az,
+                                                         yaw = yaw, tilt = env.tilt,
+                                                         precone = env.precone) 
+    fn,ft,ai,at = env.solver.solve(env.rotor.sections[j], az, pitch = env.rotor.pitchRated,
+                                                velocity = velocities, angles = [yaw, env.tilt])
+    angle = env.rotor.sections[j].twist + env.rotor.pitchRated
+    _, aoa = compute_inflow_aoa(env.solver, velocities[0], velocities[1], angle)
+    V_eff = np.sqrt((env.U*(1-ai))**2 + (env.omega*env.rotor.sections[j].radius*(1+at))**2)                             
+
+    dict_data = {
+                'yaw': yaw,
+                'TSR' : tsr,
+                'r': env.rotor.sections[j].radius,
+                'theta': np.degrees(az),  
+                'Fn': fn,
+                'Ft': ft,                    
+                'V_eff': V_eff,
+                'Alpha_deg': np.degrees(aoa)
+                }
+    return dict_data
+
+##def job_circ(i, yaw, tsr, env:SimEnv):
 ## Implémenter divers tests unitaires pour détecter des incohérences dans les données
