@@ -7,3 +7,8 @@ samples
 results
 images
 .github
+*.qpr
+data_vortex_yaw_mexico/*
+AF_QBLADE/*
+*.csv
+*.json
