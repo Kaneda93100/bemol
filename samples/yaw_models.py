@@ -48,7 +48,7 @@ base_corrections = [
 
 
 ## calculate solution for different yaw models
-for yaw_model in ('Dummy','PittAndPeters','IFPEN'):
+for yaw_model in ('PittAndPeters','IFPEN'):
 
     corrections = base_corrections.copy()
     corrections.append(getattr(bemol.secondary.yawModel,yaw_model))

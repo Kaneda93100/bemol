@@ -28,6 +28,7 @@ class SimEnv :
     ## Paramètres mécaniques et relatif à la géométrie
     precone : float
     tilt : float
+    pitch : float
     rotor_path : str
     rotor : bem.rotor.Rotor
     omega : float
@@ -59,6 +60,7 @@ class SimEnv :
         self.precone = precone
         self.tilt = tilt
         self.rotor = bem.rotor.Rotor(rotor_dir)
+        self.pitch = self.rotor.pitchRated 
         self.rotor_dir = rotor_dir
         self.omega = omega
 
@@ -126,10 +128,9 @@ class SimEnv :
         return                                                       
     
     def set_wind(self, tsr) :
-        self.U = self.omega*self.rotor.sections[-1].radius/tsr
+        self.U = self.omega*2.25/tsr
         return
-
-    def data_maker(self, yaws:list, tsrs:list, nbr_az, export = True) :
+    def data_maker(self, yaws:list, tsrs:list, nbr_az, export = None) :
         deg_azs = np.linspace(0,360, nbr_az, endpoint = False)
         rad_azs = np.radians(deg_azs)
         data_list = []
@@ -152,7 +153,7 @@ class SimEnv :
                     V_eff = np.sqrt((self.U*(1-ai))**2 + (self.omega*self.rotor.sections[j].radius*(1+at))**2)                             
 
                     data_list.append({
-                            'yaw': yaw,
+                            'yaw': np.degrees(yaw),
                             'TSR' : tsr,
                             'r': self.rotor.sections[j].radius,
                             'theta': deg_azs[i],  
@@ -164,15 +165,14 @@ class SimEnv :
         df = pd.DataFrame(data_list)
 
         ## Exporter les données calculées dans le dossier Data/
-        if export == True :
-            path_data = p.Path(os.path.dirname(__file__)) / 'export' / 'Data'
-            path_data.mkdir(parents=True, exist_ok=True)
-            df.to_csv(path_data/'bem_data.csv', index = False, sep = ',')
-            print(f"Données calculées pour yaws == [{yaws}] et tsrs == [{tsrs}].\nEnregistrées à l'adresse {path_data}")
+        if export != None :
+            export.parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(export, index = False, sep = ',')
+            print(f"Données calculées pour yaws == [{yaws}] et tsrs == [{tsrs}].\nEnregistrées à l'adresse {export}")
 
-        return df
+        return df   
     
-    def para_data_maker(self, yaws:list, tsrs:list, nbr_az, export = True):
+    def para_data_maker(self, yaws:list, tsrs:list, nbr_az, export:p.Path = None):
         deg_azs = np.linspace(0,360, nbr_az, endpoint = False)
         rad_azs = np.radians(deg_azs)
         n_sections = len(self.rotor.sections)
@@ -195,11 +195,10 @@ class SimEnv :
                 data_list.extend(data)
         df = pd.DataFrame(data_list)
 
-        if export == True :
-            path_data = p.Path(os.path.dirname(__file__)) / 'export' / 'Data'
-            path_data.mkdir(parents=True, exist_ok=True)
-            df.to_csv(path_data/'bem_data.csv', index = False, sep = ',')
-            print(f"Données calculées pour yaws == [{yaws}] et tsrs == [{tsrs}].\nEnregistrées à l'adresse {path_data}")
+        if export != None :
+            export.parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(export, index = False, sep = ',')
+            print(f"Données calculées pour yaws == [{yaws}] et tsrs == [{tsrs}].\nEnregistrées à l'adresse {export}")
 
         return df
 
@@ -276,8 +275,6 @@ def compute_inflow_aoa(solver, Ux, Uy, angle):
         attackAngle = inflowAngle - angle
 
         return inflowAngle, attackAngle
-
-
 def job(az, yaw, tsr, env:SimEnv, j) :
     velocities = bem.tools.calculateVelocity(wind = env.U, omega = env.omega, 
                                                          rad = env.rotor.sections[j].radius, azi = az,
@@ -290,7 +287,7 @@ def job(az, yaw, tsr, env:SimEnv, j) :
     V_eff = np.sqrt((env.U*(1-ai))**2 + (env.omega*env.rotor.sections[j].radius*(1+at))**2)                             
 
     dict_data = {
-                'yaw': yaw,
+                'yaw': np.degrees(yaw),
                 'TSR' : tsr,
                 'r': env.rotor.sections[j].radius,
                 'theta': np.degrees(az),  
@@ -301,5 +298,84 @@ def job(az, yaw, tsr, env:SimEnv, j) :
                 }
     return dict_data
 
-##def job_circ(i, yaw, tsr, env:SimEnv):
+## Calcul de la puissance à partir des sorties BEM
+
+def contribution(SimEnv:SimEnv, azimuth:float, pos:int) :
+    """
+    Implémentation de la fonction de calcul des contributions (à azimut fixé, intégrale sur la pale). 
+    Se référer à https://who.rocq.inria.fr/Julien.Salomon/docs/Article_BEM.pdf , section 5, eq (5.1)
+    pour plus de détails.
+
+    Input : 
+        - SimEnv : paramètres de la simulation
+        - azimuth : azimut pour lequel on calcule la contribution
+        - pos : postion de la section de pale sur laquelle on calcule la contribution
+    Output : 
+        - Calcul direct de la formule (5.1)
+    """
+
+    velocity = bem.tools.calculateVelocity(
+        wind = SimEnv.U, omega = SimEnv.omega, rad = SimEnv.rotor.sections[pos].radius,
+        yaw = SimEnv.yaw, tilt =  SimEnv.tilt, precone = SimEnv.precone
+    )
+    phi, ai, at = SimEnv.solver.inductions(SimEnv.solver.sections[pos], azimuth=azimuth, 
+                              velocity = velocity, angles = [SimEnv.yaw, 0.0],
+                              tStep = 0.0)
+    
+    hub_tip_loss = bem.secondary.hubTipLoss.Prandtl(SimEnv.rotor.sections[pos].radius, 
+                                                    nBlades = 3, hubRadius = SimEnv.rotor[0].radius, tipRadius = SimEnv.rotor[-1].radius, 
+                                                    inflow = phi)
+    
+    loc_tsr = SimEnv.rotor.sections[pos].radius*SimEnv.omega/SimEnv.U  
+    TSR = SimEnv.rotor.sections[-1].radius*SimEnv.omega/SimEnv.U  
+
+
+    loc_twist = SimEnv.rotor.sections[pos].twist
+
+    Cl = SimEnv.solver._funLift
+    Cd = SimEnv.solver._funDrag
+
+    return ((8*hub_tip_loss*loc_tsr**3)/TSR) * at*(1-ai) * (1 - (Cd(phi - loc_twist)/Cl(phi-loc_twist))*1/np.tan(phi))
+
+def compute_power(SimEnv:SimEnv, azimuth:float) :
+    """
+    Calcul de Cp (coefficient de puissance) en intégrant selon le rayon 
+    entre le nez et le bout de pale (à azimut fixé).
+    La méthode d'intégration mobilisée est celle des points milieux.
+
+    Input : 
+        - SimEnv : objet contenant les paramètres de la simulation
+        - azimuth : angle azimutale sur lequel la puissance est calculée
+
+    Output :
+        - Coefficient de puissance sur la pale Cp
+
+    """
+
+    sections = SimEnv.rotor.sections
+    integral = 0
+    for i in range(len(sections)-1):
+        mid_pow = 0.5*(contribution(SimEnv = SimEnv, azimuth = azimuth, pos = i+1) + contribution(SimEnv = SimEnv, azimuth = azimuth, pos = i))
+        integral += (sections[i+1]-sections[i])*mid_pow
+
+    return integral*SimEnv.omega/SimEnv.U    
+
+def compute__total_power(SimEnv:SimEnv, azimuths:list) :
+    """
+    Fonction qui calcule la puissance pour tous les azimuths de la révolution de l'éolienne.
+    Cette puissance totale est calculé comme la somme des puissances sur chaque azimuts.
+
+    Input : 
+        - SimEnv : objet contenant les paramètres de la simulation
+        - azimuths : liste des angles azimutaux sur lesquels la puissance est calculée
+    OutPut : 
+        Puissance généré par une révolution
+    """
+
+    power = 0
+    for az in azimuths : 
+        power += compute_power(SimEnv, azimuth = az)
+
+    return power
+
 ## Implémenter divers tests unitaires pour détecter des incohérences dans les données

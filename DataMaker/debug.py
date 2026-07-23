@@ -1,6 +1,17 @@
 import src.SimEnv as sv 
 import bemol as bem
 import matplotlib.pyplot as plt
+from scipy.stats.qmc import LatinHypercube as lhc
+import pathlib  as p
+import pandas as pd
+import numpy as np
+
+sampler = lhc(2, strength = 1, seed = 42)
+samples = sampler.random(n = 100)
+
+samples[:,0] = samples[:,0]*8 + 4
+samples[:,1] = samples[:,1]*60 - 30
+
 corrections = [
     bem.secondary.hubTipLoss.Prandtl,
     bem.secondary.skewAngle.Burton,
@@ -8,15 +19,25 @@ corrections = [
     bem.secondary.yawModel.IFPEN
 ]
 
+path_forces = p.Path("/home/arthur/Documents/GitHub/BEM_2_Vortex-/data/100/raw/fichier_forces.csv")
+path_20mai = p.Path('bem_data.csv')
+df_20mai = pd.read_csv(path_20mai)
+#df_ref_force = pd.read_csv(path_forces)
+
 sim_test = sv.SimEnv(omega = 44.5163679, U = 12.520228472, yaw = 15, skew = 15)
 
 sim_test.print()
 
-yaws = [-15., -10, -5., 0., 5., 10., 15., 20., 25., 30.]
-tsrs = [8]
+df_BEM_seq = sim_test.data_maker(list(samples[:,1]), list(samples[:,0]), 72)
+#df_BEM_para = sim_test.para_data_maker(list(samples[:,1]), list(samples[:,0]), 72, export = None) 
 
-df_se = sim_test.data_maker(yaws, tsrs, 36, export = False)
-fig = sv.easy_plot(df_se, 'theta', 'Fn')
+#df_BEM_para = df_BEM_para.sort_values(by = 'yaw')
+df_BEM_seq = df_BEM_seq.sort_values(by = 'yaw')
+
+#group_para = df_BEM_para.groupby(["yaw", 'TSR'])
+group_seq = df_BEM_seq.groupby(["yaw", 'TSR'])
+
+#fig = sv.easy_plot(df_BEM, 'theta', 'Fn')
 
 plt.show()
 

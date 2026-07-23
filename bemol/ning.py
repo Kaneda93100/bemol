@@ -1,6 +1,3 @@
-
-
-
 import numpy as np
 from scipy import optimize
 from scipy.optimize import minimize
@@ -226,6 +223,7 @@ class NingUncoupled(bem.BaseBEM):
                     self.residuals,-PI_QUARTER,-self.epsilon,
                     )
             else:
+                #ddebug = self.residuals(PI-self.epsilon)
                 inflowAngle = optimize.brentq(
                     self.residuals,PI_HALF,PI - self.epsilon,
                     )
@@ -258,7 +256,62 @@ class NingUncoupled(bem.BaseBEM):
 
         return normalForce, tangentialForce, self._axial_induction, self._tangential_induction
 
+    def inductions(self,section:section.Section,azimuth:float,pitch:float,
+              velocity:list=[0.0,0.0,0.0],angles=[0.0,0.0],tStep=0.0) :
 
+        yaw = angles[0]
+
+        self._axial_induction = 0.0
+        self._tangential_induction = 0.0
+
+        angle = section.twist + pitch
+        chord = section.chord
+        radius = section.radius
+        funDrag = section.airfoil.cd
+        funLift = section.airfoil.cl
+
+        # radial velocity not used
+        Ux = velocity[0]
+        Uy = velocity[1]
+
+        # update the flow state before calculating the residuals
+        self.update(
+            Ux=Ux,Uy=Uy,
+            angle=angle,funLift=funLift,funDrag=funDrag,
+            chord=chord,radius=radius,
+            )
+        
+        residualEpsilon = self.residuals(self.epsilon)
+        residualPiOvTwo = self.residuals(PI_HALF)
+
+        if residualEpsilon * residualPiOvTwo < 0.0:
+            inflowAngle = optimize.brentq(self.residuals,self.epsilon,PI_HALF,)
+        else:
+            residualMinusEpsilon = self.residuals(-self.epsilon)
+            residualMinPiOvFour = self.residuals(-PI_QUARTER)
+
+            if residualMinusEpsilon*residualMinPiOvFour < 0.0:
+                # propeller break region
+                inflowAngle = optimize.brentq(
+                    self.residuals,-PI_QUARTER,-self.epsilon,
+                    )
+            else:
+                inflowAngle = optimize.brentq(
+                    self.residuals,PI_HALF,PI - self.epsilon,
+                    )
+
+        # yawModel: apply to axial induction only
+        wakeSkewAngle = self.corrections.skewAngle(
+            self._axial_induction,yaw)
+        self._axial_induction = self.corrections.yawModel(
+            self._axial_induction,wakeSkewAngle,azimuth,radius,
+            self.rotor.hubRadius,self.rotor.tipRadius
+            )
+        self._axial_induction = self.corrections.dynamicInflow(
+            self._axial_induction,Ux,radius,tStep)
+
+        
+        return inflowAngle, self._axial_induction, self._tangential_induction
 
 
 class NingCoupled(bem.BaseBEM):

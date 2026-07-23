@@ -60,3 +60,4 @@ class IFPEN:
             + k1*eta*np.tan(wakeSkewAngle/2.)*np.sin(azimuthAngle + self.Phi1) \
             + k2*(1 - eta)*np.tan(wakeSkewAngle/2.)*np.sin(azimuthAngle + self.Phi2)
             )
+    

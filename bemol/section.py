@@ -31,3 +31,9 @@ class Section(object):
         self.twist = twist
         self.chord = chord
         self.airfoil = airfoil
+
+    def __getattr__(self, name):
+        try:
+            return self.__dict__[name]
+        except KeyError:
+            raise AttributeError(name)
