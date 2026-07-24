@@ -165,7 +165,7 @@ class SimEnv :
 
         ## Exporter les données calculées dans le dossier Data/
         if export == True :
-            path_data = p.Path(os.path.dirname(__file__)) / 'export' / 'Data'
+            path_data = p.Path(os.path.dirname(__file__)) 
             path_data.mkdir(parents=True, exist_ok=True)
             df.to_csv(path_data/'bem_data.csv', index = False, sep = ',')
             print(f"Données calculées pour yaws == [{yaws}] et tsrs == [{tsrs}].\nEnregistrées à l'adresse {path_data}")
