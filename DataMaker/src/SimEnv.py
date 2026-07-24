@@ -129,7 +129,7 @@ class SimEnv :
         self.U = self.omega*self.rotor.sections[-1].radius/tsr
         return
 
-    def data_maker(self, yaws:list, tsrs:list, nbr_az, export = True) :
+    def data_maker(self, yaws:list, tsrs:list, nbr_az, export = False) :
         deg_azs = np.linspace(0,360, nbr_az, endpoint = False)
         rad_azs = np.radians(deg_azs)
         data_list = []
@@ -172,7 +172,7 @@ class SimEnv :
 
         return df
     
-    def para_data_maker(self, yaws:list, tsrs:list, nbr_az, export = True):
+    def para_data_maker(self, yaws:list, tsrs:list, nbr_az, export = False):
         deg_azs = np.linspace(0,360, nbr_az, endpoint = False)
         rad_azs = np.radians(deg_azs)
         n_sections = len(self.rotor.sections)
